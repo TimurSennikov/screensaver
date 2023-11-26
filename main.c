@@ -1,25 +1,31 @@
+#include <stdio.h>
+#include <X11/Xlib.h>
+#include <stdbool.h>
+#include <unistd.h>
+#include <stdlib.h>
 #include <GLFW/glfw3.h>
 #include <GL/gl.h>
 
+bool isAfk = false;
+bool delay = false;
+bool test = false;
 float angle = 0.0f;
-float positionX = 0.0f;
-float positionY = 0.0f;
 float size = 0.5f;
 double xpos, ypos;
 
-void drawBox() {
-    // Set box color to white
+Display *display;
+Window root;
+XEvent ev;
+
+void drawaBox() {
     glColor3f(1.0f, 1.0f, 1.0f);
 
-    // Draw a rotating box at the specified position
     glPushMatrix();
     glTranslatef(0.0f, 0.0f, 0.0f);
     glRotatef(angle, 0.01f, 0.01f, 0.01f);
 
-    // Draw the box manually
     glBegin(GL_LINES);
 
-    // Bottom
     glVertex3f(-size, -size, -size);
     glVertex3f(size, -size, -size);
 
@@ -32,7 +38,6 @@ void drawBox() {
     glVertex3f(-size, -size, size);
     glVertex3f(-size, -size, -size);
 
-    // Top
     glVertex3f(-size, size, -size);
     glVertex3f(size, size, -size);
 
@@ -45,7 +50,6 @@ void drawBox() {
     glVertex3f(-size, size, size);
     glVertex3f(-size, size, -size);
 
-    // Vertical edges
     glVertex3f(-size, -size, -size);
     glVertex3f(-size, size, -size);
 
@@ -63,69 +67,73 @@ void drawBox() {
     glPopMatrix();
 }
 
-void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods) {
-    if (action == GLFW_PRESS || action == GLFW_REPEAT) {
-        // Rotate the box when arrow keys are pressed
-        switch (key) {
-            case GLFW_KEY_RIGHT:
-                angle += 5.0f;
-                break;
-            case GLFW_KEY_LEFT:
-                angle -= 5.0f;
-                break;
-            case GLFW_KEY_UP:
-                size += 0.01f;
-                break;
-            case GLFW_KEY_DOWN:
-                size -= 0.01f;
-                break;
-        }
+void drawawindow() {
+        if (!glfwInit()) {
+       	printf("failed to init glfw window");
     }
-}
-
-int main() {
-    // Initialize GLFW
-    if (!glfwInit()) {
-        return -1;
-    }
-
-    // Create a windowed mode window and its OpenGL context
+    
     GLFWwindow* window = glfwCreateWindow(1920, 1080, "screensaver", NULL, NULL);
-    if (!window) {
-        glfwTerminate();
-        return -1;
-	}
 
     glfwSetWindowAttrib(window, GLFW_FLOATING, GLFW_TRUE);
 
-    // Make the window's context current
     glfwMakeContextCurrent(window);
-	
-    // glfwSetKeyCallback(window, keyCallback);
 
     glfwGetCursorPos(window, &xpos, &ypos);
 
-    // Enable depth testing for 3D rendering
     glEnable(GL_DEPTH_TEST);
+
 	
-    // Loop until the user closes the window
     while (!glfwWindowShouldClose(window)) {
-        // Render here
+
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        // Draw the rotating box at the specified position	
-	drawBox();
+        drawaBox();
         angle += 0.05f;
-	// Swap front and back buffers
         glfwSwapBuffers(window);
 
-        // Poll for and process events
-        glfwPollEvents();
+glfwPollEvents();
     }
 
-    // Terminate GLFW
-    glfwTerminate();
+   glfwTerminate();
+}
+int main() {
+    unsigned int delaySeconds = 3;
+
+    display = XOpenDisplay(0);
+
+    if (!display) {
+        fprintf(stderr, "Unable to open display\n");
+        return 1;
+    }
+
+    root = DefaultRootWindow(display);
+
+    while (1) {
+        XQueryPointer(display, root, &ev.xbutton.root, &ev.xbutton.window,
+                      &ev.xbutton.x_root, &ev.xbutton.y_root,
+                      &ev.xbutton.x, &ev.xbutton.y,
+                      &ev.xbutton.state);
+
+        unsigned int oldxroot = ev.xbutton.x_root;
+        unsigned int oldyroot = ev.xbutton.y_root;
+
+        sleep(delaySeconds);
+
+        XQueryPointer(display, root, &ev.xbutton.root, &ev.xbutton.window,
+                      &ev.xbutton.x_root, &ev.xbutton.y_root,
+                      &ev.xbutton.x, &ev.xbutton.y,
+                      &ev.xbutton.state);
+
+        unsigned int x = ev.xbutton.x_root;
+        unsigned int y = ev.xbutton.y_root;
+
+        if (oldxroot == x && oldyroot == y) {
+            drawawindow();
+             }
+    }
+
+    isAfk = false;
+    XCloseDisplay(display);
 
     return 0;
 }
-
